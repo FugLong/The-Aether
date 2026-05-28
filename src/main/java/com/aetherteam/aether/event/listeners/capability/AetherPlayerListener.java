@@ -3,7 +3,7 @@ package com.aetherteam.aether.event.listeners.capability;
 import com.aetherteam.aether.Aether;
 import com.aetherteam.aether.attachment.AetherPlayerAttachment;
 import com.aetherteam.aether.event.hooks.CapabilityHooks;
-import com.aetherteam.nitrogen.fabric.events.EntityTickEvents;
+import com.aetherteam.nitrogen.fabric.events.PlayerTickEvents;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientEntityEvents;
@@ -11,11 +11,10 @@ import net.fabricmc.fabric.api.entity.event.v1.ServerEntityWorldChangeEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 
 /**
- * Listener for Forge events to handle functions in {@link AetherPlayerAttachment}.
+ * Listener for Fabric events to handle functions in {@link AetherPlayerAttachment}.
  */
 public class AetherPlayerListener {
     /**
@@ -24,8 +23,7 @@ public class AetherPlayerListener {
     public static void listen() {
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> onPlayerLogin(handler.getPlayer()));
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> onPlayerLogout(handler.getPlayer()));
-        // onPlayerJoinLevel
-        EntityTickEvents.AFTER.register(AetherPlayerListener::onPlayerUpdate);
+        PlayerTickEvents.AFTER.register(AetherPlayerListener::onPlayerUpdate);
         ServerPlayerEvents.COPY_FROM.register((oldPlayer, newPlayer, alive) -> onPlayerClone(newPlayer, !alive));
         ServerEntityWorldChangeEvents.AFTER_PLAYER_CHANGE_WORLD.register((player, origin, destination) -> onPlayerChangeDimension(player));
     }
@@ -43,26 +41,26 @@ public class AetherPlayerListener {
     }
 
     /**
-     * @see com.aetherteam.aether.event.hooks.CapabilityHooks.AetherPlayerHooks#login(Player)
+     * @see com.aetherteam.aether.event.hooks.CapabilityHooks.AetherPlayerHooks#logout(Player)
      */
     public static void onPlayerLogout(Player player) {
         CapabilityHooks.AetherPlayerHooks.logout(player);
     }
 
     /**
-     * @see com.aetherteam.aether.event.hooks.CapabilityHooks.AetherPlayerHooks#joinLevel(Entity)
+     * @see com.aetherteam.aether.event.hooks.CapabilityHooks.AetherPlayerHooks#joinLevel(Player)
      */
     public static void onPlayerJoinLevel(Entity entity) {
-        CapabilityHooks.AetherPlayerHooks.joinLevel(entity);
+        if (entity instanceof Player player) {
+            CapabilityHooks.AetherPlayerHooks.joinLevel(player);
+        }
     }
 
     /**
-     * @see com.aetherteam.aether.event.hooks.CapabilityHooks.AetherPlayerHooks#update(LivingEntity)
+     * @see com.aetherteam.aether.event.hooks.CapabilityHooks.AetherPlayerHooks#update(Player)
      */
-    public static void onPlayerUpdate(Entity entity) {
-        if (entity instanceof LivingEntity livingEntity) {
-            CapabilityHooks.AetherPlayerHooks.update(livingEntity);
-        }
+    public static void onPlayerUpdate(Player player) {
+        CapabilityHooks.AetherPlayerHooks.update(player);
     }
 
     /**

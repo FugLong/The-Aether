@@ -1,6 +1,7 @@
 package com.aetherteam.aether.item;
 
 import com.aetherteam.aether.AetherConfig;
+import com.aetherteam.aether.item.AetherItems;
 import com.aetherteam.aether.AetherTags;
 import com.aetherteam.aether.item.accessories.cape.CapeItem;
 import com.aetherteam.aether.item.accessories.gloves.GlovesItem;
@@ -10,6 +11,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
@@ -232,6 +234,44 @@ public final class EquipmentUtil {
      */
     public static boolean hasAnyPhoenixArmor(LivingEntity entity) {
         return hasAnyArmor(entity, AetherItems.PHOENIX_HELMET.get(), AetherItems.PHOENIX_CHESTPLATE.get(), AetherItems.PHOENIX_LEGGINGS.get(), AetherItems.PHOENIX_BOOTS.get(), AetherItems.PHOENIX_GLOVES.get());
+    }
+
+    /**
+     * Cheap check used before per-tick armor ability logic. Ability armor is player-only and uses repair tags to avoid full set scans on every entity.
+     *
+     * @param entity The {@link LivingEntity} to check.
+     * @return Whether the entity may be wearing Valkyrie, Neptune, or Phoenix armor.
+     */
+    public static boolean mayHaveAbilityArmor(LivingEntity entity) {
+        return wearsValkyrieArmorPiece(entity) || wearsNeptuneArmorPiece(entity) || wearsPhoenixArmorPiece(entity);
+    }
+
+    public static boolean wearsValkyrieArmorPiece(LivingEntity entity) {
+        return wearsArmorRepairTag(entity, AetherTags.Items.VALKYRIE_REPAIRING)
+                || (AetherConfig.SERVER.require_gloves.get() && findFirstAccessory(entity, AetherItems.VALKYRIE_GLOVES.get()).isPresent());
+    }
+
+    public static boolean wearsNeptuneArmorPiece(LivingEntity entity) {
+        return wearsArmorRepairTag(entity, AetherTags.Items.NEPTUNE_REPAIRING)
+                || (AetherConfig.SERVER.require_gloves.get() && findFirstAccessory(entity, AetherItems.NEPTUNE_GLOVES.get()).isPresent());
+    }
+
+    public static boolean wearsPhoenixArmorPiece(LivingEntity entity) {
+        return wearsArmorRepairTag(entity, AetherTags.Items.PHOENIX_REPAIRING)
+                || (AetherConfig.SERVER.require_gloves.get() && findFirstAccessory(entity, AetherItems.PHOENIX_GLOVES.get()).isPresent());
+    }
+
+    public static boolean wearsGravititeArmorPiece(LivingEntity entity) {
+        return wearsArmorRepairTag(entity, AetherTags.Items.GRAVITITE_REPAIRING);
+    }
+
+    private static boolean wearsArmorRepairTag(LivingEntity entity, TagKey<Item> repairTag) {
+        for (EquipmentSlot slot : EquipmentSlot.values()) {
+            if (slot.getType() == EquipmentSlot.Type.HUMANOID_ARMOR && entity.getItemBySlot(slot).is(repairTag)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
