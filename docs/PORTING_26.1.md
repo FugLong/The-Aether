@@ -183,9 +183,16 @@ Branch: **`perf/2850-fabric-1.21.1`** (based on `origin/1.21.1-develop-fabric`).
 
 Same logical fixes adapted to NeoForge events (`PlayerTickEvent`, etc.). Apply to `1.21.1-develop` when desired.
 
-### 3.4 26.1.2 branch state
+### 3.4 26.1.2 branch state (`26.1.2-develop-fabric`)
 
-Local branch **`26.1.2-develop-fabric`** exists but **does not** have committed gradle bumps (only experiments in working tree earlier). Perf changes should be **merged/cherry-picked** onto 26.1.2 after the port compiles.
+Merged into this branch:
+
+- **`perf/2850-fabric-1.21.1`** — server tick optimizations (#2850)
+- **`fix/2865-moatype-egg-registry`** — MoaType egg `copy()` fix (#2865 / #2770)
+- **`docs/PORTING_26.1.md`** — this document
+- **`gradle.properties` / `build.gradle` / `fabric.mod.json`** — target MC **26.1.2**, Java **25**, Fabric loader **0.19.2**
+
+The two fix branches do not need to contain each other; both are integrated here. Build still blocked until Nitrogen + Accessories Fabric **26.1.2** artifacts exist (or composite builds).
 
 ---
 
