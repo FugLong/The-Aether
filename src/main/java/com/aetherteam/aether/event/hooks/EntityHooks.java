@@ -3,6 +3,7 @@ package com.aetherteam.aether.event.hooks;
 import com.aetherteam.aether.AetherTags;
 import com.aetherteam.aether.attachment.AetherDataAttachments;
 import com.aetherteam.aether.block.AetherBlocks;
+import com.aetherteam.aether.data.resources.registries.AetherDimensions;
 import com.aetherteam.aether.client.AetherSoundEvents;
 import com.aetherteam.aether.effect.AetherEffects;
 import com.aetherteam.aether.entity.ai.goal.BeeGrowBerryBushGoal;
@@ -27,6 +28,7 @@ import io.wispforest.accessories.api.slot.SlotEntryReference;
 import io.wispforest.accessories.api.slot.SlotReferenceImpl;
 import io.wispforest.accessories.api.slot.SlotTypeReference;
 import net.minecraft.advancements.CriteriaTriggers;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
@@ -34,6 +36,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.tags.EnchantmentTags;
+import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.InteractionHand;
@@ -245,13 +248,37 @@ public class EntityHooks {
      */
     public static void launchMount(Player player) {
         Entity mount = player.getVehicle();
-        if (player.isPassenger() && mount != null) {
-            if (mount.level().getBlockStates(mount.getBoundingBox()).anyMatch((state) -> state.is(AetherBlocks.BLUE_AERCLOUD.get()))) {
-                if (player.level().isClientSide()) {
-                    mount.setDeltaMovement(mount.getDeltaMovement().x(), 2.0, mount.getDeltaMovement().z());
+        if (!player.isPassenger() || mount == null) {
+            return;
+        }
+        if (!mount.level().dimensionType().effectsLocation().equals(AetherDimensions.AETHER_DIMENSION_TYPE.location())) {
+            return;
+        }
+        if (isMountedOnBlueAercloud(mount) && player.level().isClientSide()) {
+            mount.setDeltaMovement(mount.getDeltaMovement().x(), 2.0, mount.getDeltaMovement().z());
+        }
+    }
+
+    private static boolean isMountedOnBlueAercloud(Entity entity) {
+        var level = entity.level();
+        var cloud = AetherBlocks.BLUE_AERCLOUD.get();
+        var box = entity.getBoundingBox();
+        int minX = Mth.floor(box.minX);
+        int minY = Mth.floor(box.minY);
+        int minZ = Mth.floor(box.minZ);
+        int maxX = Mth.floor(box.maxX);
+        int maxY = Mth.floor(box.maxY);
+        int maxZ = Mth.floor(box.maxZ);
+        for (int x = minX; x <= maxX; x++) {
+            for (int y = minY; y <= maxY; y++) {
+                for (int z = minZ; z <= maxZ; z++) {
+                    if (level.getBlockState(new BlockPos(x, y, z)).is(cloud)) {
+                        return true;
+                    }
                 }
             }
         }
+        return false;
     }
 
     /**

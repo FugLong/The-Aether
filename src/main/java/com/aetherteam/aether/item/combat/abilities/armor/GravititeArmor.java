@@ -18,6 +18,9 @@ public interface GravititeArmor {
      * @see com.aetherteam.aether.event.listeners.abilities.ArmorAbilityListener#onEntityJump(LivingEvent.LivingJumpEvent)
      */
     static void boostedJump(LivingEntity entity) {
+        if (entity instanceof Player && !EquipmentUtil.wearsGravititeArmorPiece(entity)) {
+            return;
+        }
         if (EquipmentUtil.hasFullGravititeSet(entity)) {
             if (entity instanceof Player player) {
                 if (player.onGround() && player.getAttachedOrCreate(AetherDataAttachments.AETHER_PLAYER).isGravititeJumpActive()) {

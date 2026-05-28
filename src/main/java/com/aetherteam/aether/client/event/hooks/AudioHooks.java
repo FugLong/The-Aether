@@ -91,9 +91,15 @@ public class AudioHooks {
      * @see com.aetherteam.aether.client.event.listeners.AudioListener#onClientTick(ClientTickEvent.Post)
      */
     public static void tick() {
-        if (!Minecraft.getInstance().isPaused() && Minecraft.getInstance().level != null && !AetherConfig.CLIENT.disable_music_manager.get()) {
-            AetherMusicManager.tick();
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.isPaused() || minecraft.level == null || AetherConfig.CLIENT.disable_music_manager.get()) {
+            return;
         }
+        if (minecraft.player != null && !minecraft.player.level().dimensionType().effectsLocation().equals(com.aetherteam.aether.data.resources.registries.AetherDimensions.AETHER_DIMENSION_TYPE.location())
+                && !AetherMusicManager.isAetherBossMusicActive()) {
+            return;
+        }
+        AetherMusicManager.tick();
     }
 
     /**

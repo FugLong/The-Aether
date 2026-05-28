@@ -220,26 +220,39 @@ public class AetherPlayerAttachment implements INBTSynchable {
     }
 
     /**
-     * Handles functions when the player ticks from {@link net.neoforged.neoforge.event.tick.EntityTickEvent}
+     * Handles functions when the player ticks from {@link net.neoforged.neoforge.event.tick.PlayerTickEvent}
      */
     public void onUpdate(Player player) {
         this.syncAfterJoin(player);
-        this.syncClients(player);
-        this.handleAetherPortal(player);
+        if (this.shouldSyncBetweenClients()) {
+            this.syncClients(player);
+        }
+        if (player.level().isClientSide()) {
+            this.handleAetherPortal(player);
+            this.tickDownProjectileImpact(player);
+            this.handleWingRotation(player);
+            ClientMoaSkinPerkData.INSTANCE.syncFromClient(player);
+            ClientHaloPerkData.INSTANCE.syncFromClient(player);
+            ClientDeveloperGlowPerkData.INSTANCE.syncFromClient(player);
+        } else {
+            this.handleRemoveDarts(player);
+            this.handleAttackCooldown(player);
+            if (this.performVampireHealing()) {
+                this.handleVampireHealing(player);
+            }
+            this.handleSavedHealth(player);
+            this.handleLifeShardModifier(player);
+        }
         this.activateParachute(player);
-        this.handleRemoveDarts(player);
-        this.removeRemedyDuration(player);
-        this.tickDownProjectileImpact(player);
-        this.handleWingRotation(player);
-        this.handleAttackCooldown(player);
-        this.handleVampireHealing(player);
-        this.checkToRemoveAerbunny(player);
-        this.checkToRemoveCloudMinions();
-        this.handleSavedHealth(player);
-        this.handleLifeShardModifier(player);
-        ClientMoaSkinPerkData.INSTANCE.syncFromClient(player);
-        ClientHaloPerkData.INSTANCE.syncFromClient(player);
-        ClientDeveloperGlowPerkData.INSTANCE.syncFromClient(player);
+        if (this.remedyStartDuration > 0) {
+            this.removeRemedyDuration(player);
+        }
+        if (this.getMountedAerbunny() != null) {
+            this.checkToRemoveAerbunny(player);
+        }
+        if (!this.getCloudMinions().isEmpty()) {
+            this.checkToRemoveCloudMinions();
+        }
     }
 
     private void syncAfterJoin(Player player) {
@@ -311,27 +324,27 @@ public class AetherPlayerAttachment implements INBTSynchable {
      * Checks for deployable parachutes from {@link AetherTags.Items#DEPLOYABLE_PARACHUTES}.
      */
     private void activateParachute(Player player) {
+        if (player.isCreative() || player.isShiftKeyDown() || player.isFallFlying() || player.isPassenger() || player.getDeltaMovement().y() >= -1.5) {
+            return;
+        }
         Inventory inventory = player.getInventory();
+        if (!inventory.contains(AetherTags.Items.DEPLOYABLE_PARACHUTES)) {
+            return;
+        }
         Level level = player.level();
-        if (!player.isCreative() && !player.isShiftKeyDown() && !player.isFallFlying() && !player.isPassenger()) {
-            if (player.getDeltaMovement().y() < -1.5) {
-                if (inventory.contains(AetherTags.Items.DEPLOYABLE_PARACHUTES)) {
-                    for (ItemStack stack : inventory.items) {
-                        if (stack.getItem() instanceof ParachuteItem parachuteItem) {
-                            Parachute parachute = parachuteItem.getParachuteEntity().get().create(level);
-                            if (parachute != null) {
-                                parachute.setPos(player.getX(), player.getY() - 1.0, player.getZ());
-                                parachute.setDeltaMovement(player.getDeltaMovement());
-                                if (!level.isClientSide()) {
-                                    level.addFreshEntity(parachute);
-                                    player.startRiding(parachute);
-                                    stack.hurtAndBreak(1, player, EquipmentSlot.MAINHAND);
-                                }
-                                parachute.spawnExplosionParticle();
-                                break;
-                            }
-                        }
+        for (ItemStack stack : inventory.items) {
+            if (stack.getItem() instanceof ParachuteItem parachuteItem) {
+                Parachute parachute = parachuteItem.getParachuteEntity().get().create(level);
+                if (parachute != null) {
+                    parachute.setPos(player.getX(), player.getY() - 1.0, player.getZ());
+                    parachute.setDeltaMovement(player.getDeltaMovement());
+                    if (!level.isClientSide()) {
+                        level.addFreshEntity(parachute);
+                        player.startRiding(parachute);
+                        stack.hurtAndBreak(1, player, EquipmentSlot.MAINHAND);
                     }
+                    parachute.spawnExplosionParticle();
+                    break;
                 }
             }
         }
@@ -341,36 +354,34 @@ public class AetherPlayerAttachment implements INBTSynchable {
      * Slowly removes darts that are rendered as stuck on the player by {@link com.aetherteam.aether.client.renderer.player.layer.DartLayer}.
      */
     private void handleRemoveDarts(Player player) {
-        if (!player.level().isClientSide()) {
-            if (this.getGoldenDartCount() > 0) {
-                if (this.removeGoldenDartTime <= 0) {
-                    this.removeGoldenDartTime = 20 * (30 - this.getGoldenDartCount());
-                }
-
-                --this.removeGoldenDartTime;
-                if (this.removeGoldenDartTime <= 0) {
-                    this.setSynched(player.getId(), INBTSynchable.Direction.CLIENT, "setGoldenDartCount", this.getGoldenDartCount() - 1);
-                }
+        if (this.getGoldenDartCount() <= 0 && this.getPoisonDartCount() <= 0 && this.getEnchantedDartCount() <= 0) {
+            return;
+        }
+        if (this.getGoldenDartCount() > 0) {
+            if (this.removeGoldenDartTime <= 0) {
+                this.removeGoldenDartTime = 20 * (30 - this.getGoldenDartCount());
             }
-            if (this.getPoisonDartCount() > 0) {
-                if (this.removePoisonDartTime <= 0) {
-                    this.removePoisonDartTime = 20 * (30 - this.getPoisonDartCount());
-                }
-
-                --this.removePoisonDartTime;
-                if (this.removePoisonDartTime <= 0) {
-                    this.setSynched(player.getId(), INBTSynchable.Direction.CLIENT, "setPoisonDartCount", this.getPoisonDartCount() - 1);
-                }
+            --this.removeGoldenDartTime;
+            if (this.removeGoldenDartTime <= 0) {
+                this.setSynched(player.getId(), INBTSynchable.Direction.CLIENT, "setGoldenDartCount", this.getGoldenDartCount() - 1);
             }
-            if (this.getEnchantedDartCount() > 0) {
-                if (this.removeEnchantedDartTime <= 0) {
-                    this.removeEnchantedDartTime = 20 * (30 - this.getEnchantedDartCount());
-                }
-
-                --this.removeEnchantedDartTime;
-                if (this.removeEnchantedDartTime <= 0) {
-                    this.setSynched(player.getId(), INBTSynchable.Direction.CLIENT, "setEnchantedDartCount", this.getEnchantedDartCount() - 1);
-                }
+        }
+        if (this.getPoisonDartCount() > 0) {
+            if (this.removePoisonDartTime <= 0) {
+                this.removePoisonDartTime = 20 * (30 - this.getPoisonDartCount());
+            }
+            --this.removePoisonDartTime;
+            if (this.removePoisonDartTime <= 0) {
+                this.setSynched(player.getId(), INBTSynchable.Direction.CLIENT, "setPoisonDartCount", this.getPoisonDartCount() - 1);
+            }
+        }
+        if (this.getEnchantedDartCount() > 0) {
+            if (this.removeEnchantedDartTime <= 0) {
+                this.removeEnchantedDartTime = 20 * (30 - this.getEnchantedDartCount());
+            }
+            --this.removeEnchantedDartTime;
+            if (this.removeEnchantedDartTime <= 0) {
+                this.setSynched(player.getId(), INBTSynchable.Direction.CLIENT, "setEnchantedDartCount", this.getEnchantedDartCount() - 1);
             }
         }
     }
@@ -401,13 +412,11 @@ public class AetherPlayerAttachment implements INBTSynchable {
      * Handles the rotation for the Valkyrie Armor wings layer renderer at {@link com.aetherteam.aether.client.renderer.player.layer.PlayerWingsLayer}.
      */
     private void handleWingRotation(Player player) {
-        if (player.level().isClientSide()) {
-            this.wingRotationO = this.getWingRotation();
-            if (EquipmentUtil.hasFullValkyrieSet(player)) {
-                this.wingRotation = player.tickCount;
-            } else {
-                this.wingRotation = 0;
-            }
+        this.wingRotationO = this.getWingRotation();
+        if (EquipmentUtil.wearsValkyrieArmorPiece(player) && EquipmentUtil.hasFullValkyrieSet(player)) {
+            this.wingRotation = player.tickCount;
+        } else {
+            this.wingRotation = 0;
         }
     }
 
@@ -415,14 +424,10 @@ public class AetherPlayerAttachment implements INBTSynchable {
      * Decreases the attack cooldown after a player has attacked. This is used for when the player has attacked while wearing an Invisibility Cloak.
      */
     private void handleAttackCooldown(Player player) {
-        if (!player.level().isClientSide()) {
-            if (this.attackedWithInvisibility()) {
-                --this.invisibilityAttackCooldown;
-                if (this.invisibilityAttackCooldown <= 0) {
-                    this.setSynched(player.getId(), INBTSynchable.Direction.CLIENT, "setAttackedWithInvisibility", false);
-                }
-            } else {
-                this.invisibilityAttackCooldown = AetherConfig.SERVER.invisibility_visibility_time.get();
+        if (this.attackedWithInvisibility()) {
+            --this.invisibilityAttackCooldown;
+            if (this.invisibilityAttackCooldown <= 0) {
+                this.setSynched(player.getId(), INBTSynchable.Direction.CLIENT, "setAttackedWithInvisibility", false);
             }
         }
     }
@@ -503,16 +508,25 @@ public class AetherPlayerAttachment implements INBTSynchable {
      * Sets up the attribute modifier for extra Life Shard hearts.
      */
     private void handleLifeShardModifier(Player player) {
-        if (!player.level().isClientSide()) {
-            AttributeInstance health = player.getAttribute(Attributes.MAX_HEALTH);
-            AttributeModifier lifeShardHealth = this.getLifeShardHealthAttributeModifier();
-            if (health != null) {
-                if (health.hasModifier(lifeShardHealth.id())) {
-                    health.removeModifier(lifeShardHealth.id());
-                }
-                health.addTransientModifier(lifeShardHealth);
-            }
+        AttributeInstance health = player.getAttribute(Attributes.MAX_HEALTH);
+        if (health == null) {
+            return;
         }
+        AttributeModifier lifeShardHealth = this.getLifeShardHealthAttributeModifier();
+        if (this.getLifeShardCount() <= 0) {
+            if (health.hasModifier(lifeShardHealth.id())) {
+                health.removeModifier(lifeShardHealth.id());
+            }
+            return;
+        }
+        if (health.hasModifier(lifeShardHealth.id())) {
+            AttributeModifier existing = health.getModifier(lifeShardHealth.id());
+            if (existing != null && existing.amount() == lifeShardHealth.amount()) {
+                return;
+            }
+            health.removeModifier(lifeShardHealth.id());
+        }
+        health.addTransientModifier(lifeShardHealth);
     }
 
     /**

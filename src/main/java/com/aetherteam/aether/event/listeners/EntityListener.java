@@ -78,7 +78,9 @@ public class EntityListener {
      * @see EntityHooks#launchMount(Player)
      */
     public static void onRiderTick(Player player) {
-        EntityHooks.launchMount(player);
+        if (player.isPassenger()) {
+            EntityHooks.launchMount(player);
+        }
     }
 
     /**

@@ -6,7 +6,6 @@ import com.aetherteam.aether.data.resources.registries.AetherDimensions;
 import com.aetherteam.nitrogen.attachment.INBTSynchable;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 
 public class CapabilityHooks {
@@ -31,20 +30,16 @@ public class CapabilityHooks {
          * @see AetherPlayerAttachment#onJoinLevel(Player)
          * @see com.aetherteam.aether.event.listeners.capability.AetherPlayerListener#onPlayerJoinLevel(Entity)
          */
-        public static void joinLevel(Entity entity) {
-            if (entity instanceof Player player) {
-                player.getAttachedOrCreate(AetherDataAttachments.AETHER_PLAYER).onJoinLevel(player);
-            }
+        public static void joinLevel(Player player) {
+            player.getAttachedOrCreate(AetherDataAttachments.AETHER_PLAYER).onJoinLevel(player);
         }
 
         /**
          * @see AetherPlayerAttachment#onUpdate(Player)
          * @see com.aetherteam.aether.event.listeners.capability.AetherPlayerListener#onPlayerUpdate(Entity)
          */
-        public static void update(LivingEntity entity) {
-            if (entity instanceof Player player) {
-                player.getAttachedOrCreate(AetherDataAttachments.AETHER_PLAYER).onUpdate(player);
-            }
+        public static void update(Player player) {
+            player.getAttachedOrCreate(AetherDataAttachments.AETHER_PLAYER).onUpdate(player);
         }
 
         /**

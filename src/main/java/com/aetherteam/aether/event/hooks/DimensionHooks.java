@@ -213,13 +213,13 @@ public class DimensionHooks {
      * @see com.aetherteam.aether.event.listeners.DimensionListener#onWorldTick(Level)
      */
     public static void checkEternalDayConfig(Level level) {
-        if (!level.isClientSide() && level.hasAttached(AetherDataAttachments.AETHER_TIME)) {
-            var aetherTime = level.getAttached(AetherDataAttachments.AETHER_TIME);
-            boolean eternalDay = aetherTime.isEternalDay();
-            if (AetherConfig.SERVER.disable_eternal_day.get() && eternalDay) {
-                aetherTime.setEternalDay(false);
-                aetherTime.updateEternalDay(level);
-            }
+        if (!AetherConfig.SERVER.disable_eternal_day.get() || level.isClientSide() || !level.hasAttached(AetherDataAttachments.AETHER_TIME)) {
+            return;
+        }
+        var aetherTime = level.getAttached(AetherDataAttachments.AETHER_TIME);
+        if (aetherTime.isEternalDay()) {
+            aetherTime.setEternalDay(false);
+            aetherTime.updateEternalDay(level);
         }
     }
 
@@ -279,16 +279,21 @@ public class DimensionHooks {
      * @see com.aetherteam.aether.event.listeners.DimensionListener#onPlayerTraveling(Player)
      */
     public static void travelling(Player player) {
-        if (player instanceof ServerPlayer serverPlayer) {
-            if (teleportationTimer > 0) { // Prevents the player from being kicked for flying.
-                ServerGamePacketListenerImplAccessor serverGamePacketListenerImplAccessor = (ServerGamePacketListenerImplAccessor) serverPlayer.connection;
-                serverGamePacketListenerImplAccessor.aether$setAboveGroundTickCount(0);
-                serverGamePacketListenerImplAccessor.aether$setAboveGroundVehicleTickCount(0);
-                teleportationTimer--;
-            }
-            if (teleportationTimer < 0 || serverPlayer.verticalCollisionBelow) {
+        if (!(player instanceof ServerPlayer serverPlayer)) {
+            return;
+        }
+        if (teleportationTimer <= 0) {
+            if (serverPlayer.verticalCollisionBelow) {
                 teleportationTimer = 0;
             }
+            return;
+        }
+        ServerGamePacketListenerImplAccessor serverGamePacketListenerImplAccessor = (ServerGamePacketListenerImplAccessor) serverPlayer.connection;
+        serverGamePacketListenerImplAccessor.aether$setAboveGroundTickCount(0);
+        serverGamePacketListenerImplAccessor.aether$setAboveGroundVehicleTickCount(0);
+        teleportationTimer--;
+        if (teleportationTimer < 0 || serverPlayer.verticalCollisionBelow) {
+            teleportationTimer = 0;
         }
     }
 

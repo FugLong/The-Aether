@@ -1,6 +1,7 @@
 package com.aetherteam.aether.event.listeners;
 
 import com.aetherteam.aether.Aether;
+import com.aetherteam.aether.data.resources.registries.AetherDimensions;
 import com.aetherteam.aether.event.hooks.DimensionHooks;
 import com.aetherteam.nitrogen.fabric.events.*;
 import net.fabricmc.fabric.api.entity.event.v1.EntitySleepEvents;
@@ -20,6 +21,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
+import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.BlockHitResult;
 import org.apache.commons.lang3.mutable.MutableLong;
 import org.jetbrains.annotations.Nullable;
@@ -65,8 +67,11 @@ public class DimensionListener {
      * @see DimensionHooks#detectWaterInFrame(LevelAccessor, BlockPos, BlockState, FluidState)
      */
     public static void onWaterExistsInsidePortalFrame(LevelAccessor level, BlockPos blockPos, CancellableCallback isCancelled) {
-        BlockState blockState = level.getBlockState(blockPos);
         FluidState fluidState = level.getFluidState(blockPos);
+        if (!fluidState.is(Fluids.WATER)) {
+            return;
+        }
+        BlockState blockState = level.getBlockState(blockPos);
         if (DimensionHooks.detectWaterInFrame(level, blockPos, blockState, fluidState)) {
             isCancelled.setCanceled(true);
         }
@@ -77,10 +82,11 @@ public class DimensionListener {
      * @see DimensionHooks#checkEternalDayConfig(Level)
      */
     public static void onWorldTick(Level level) {
-        if (!level.isClientSide()) {
-            DimensionHooks.tickTime(level);
-            DimensionHooks.checkEternalDayConfig(level);
+        if (level.isClientSide() || !level.dimensionType().effectsLocation().equals(AetherDimensions.AETHER_DIMENSION_TYPE.location())) {
+            return;
         }
+        DimensionHooks.tickTime(level);
+        DimensionHooks.checkEternalDayConfig(level);
     }
 
     /**
@@ -103,7 +109,9 @@ public class DimensionListener {
      * @see DimensionHooks#travelling(Player)
      */
     public static void onPlayerTraveling(Player player) {
-        DimensionHooks.travelling(player);
+        if (DimensionHooks.teleportationTimer > 0 || player.verticalCollisionBelow) {
+            DimensionHooks.travelling(player);
+        }
     }
 
     /**
